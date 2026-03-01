@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 
-const CameraFeed = ({ onFrame }) => {
+const CameraFeed = ({ onFrame, threatData }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -25,72 +25,69 @@ const CameraFeed = ({ onFrame }) => {
   }, []);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/inference');
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      const canvas = document.getElementById('overlay-canvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        const { width, height } = canvas.parentElement.getBoundingClientRect();
-        canvas.width = width;
-        canvas.height = height;
-        ctx.clearRect(0, 0, width, height);
+    const data = threatData;
+    if (!data) return;
+    const canvas = document.getElementById('overlay-canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const { width, height } = canvas.parentElement.getBoundingClientRect();
+      canvas.width = width;
+      canvas.height = height;
+      ctx.clearRect(0, 0, width, height);
 
-        // 1. Draw Detections (HUD)
-        if (data.detections) {
-          data.detections.forEach(det => {
-            const [x1, y1, x2, y2] = det.box;
-            const rx = (x1 / 640) * width;
-            const ry = (y1 / 360) * height;
-            const rw = ((x2 - x1) / 640) * width;
-            const rh = ((y2 - y1) / 360) * height;
+      // 1. Draw Detections (HUD)
+      if (data.detections) {
+        data.detections.forEach(det => {
+          const [x1, y1, x2, y2] = det.box;
+          const rx = (x1 / 640) * width;
+          const ry = (y1 / 360) * height;
+          const rw = ((x2 - x1) / 640) * width;
+          const rh = ((y2 - y1) / 360) * height;
 
-            let color = det.className === 'person' ? '#00d2ff' : '#ff4b5c';
-            if (det.isHeld) color = '#ffeb3b';
+          let color = det.className === 'person' ? '#00d2ff' : '#ff4b5c';
+          if (det.isHeld) color = '#ffeb3b';
 
-            ctx.strokeStyle = color;
-            ctx.lineWidth = det.isHeld ? 3 : 2;
-            ctx.strokeRect(rx, ry, rw, rh);
+          ctx.strokeStyle = color;
+          ctx.lineWidth = det.isHeld ? 3 : 2;
+          ctx.strokeRect(rx, ry, rw, rh);
 
-            ctx.fillStyle = color;
-            const label = det.isHeld ? `HELD: ${det.className.toUpperCase()}` : det.className.toUpperCase();
-            ctx.fillRect(rx, ry - 25, ctx.measureText(label).width + 20, 25);
-            ctx.fillStyle = 'black';
-            ctx.font = 'bold 14px Inter';
-            ctx.fillText(`${label} [ID #${det.id}]`, rx + 5, ry - 8);
-          });
-        }
-
-        // 2. Draw Emotions
-        if (data.emotions) {
-          data.emotions.forEach(emo => {
-            const { x, y } = emo.region;
-            const rx = (x / 640) * width;
-            const ry = (y / 360) * height;
-            ctx.fillStyle = '#00e676';
-            ctx.font = 'bold 16px Inter';
-            ctx.fillText(`EMOTION: ${emo.emotion.toUpperCase()}`, rx, ry - 35);
-          });
-        }
-
-        // 3. Draw Auto Alert Overlay
-        if (data.auto_alert) {
-          ctx.fillStyle = 'rgba(255, 75, 92, 0.2)';
-          ctx.fillRect(0, 0, width, height);
-          ctx.strokeStyle = '#ff4b5c';
-          ctx.lineWidth = 10;
-          ctx.strokeRect(0, 0, width, height);
-
-          ctx.fillStyle = '#ff4b5c';
-          ctx.font = 'bold 32px Inter';
-          ctx.textAlign = 'center';
-          ctx.fillText("CRITICAL ALERT: CALLING FOR HELP", width / 2, 80);
-          ctx.textAlign = 'left';
-        }
+          ctx.fillStyle = color;
+          const label = det.isHeld ? `HELD: ${det.className.toUpperCase()}` : det.className.toUpperCase();
+          ctx.fillRect(rx, ry - 25, ctx.measureText(label).width + 20, 25);
+          ctx.fillStyle = 'black';
+          ctx.font = 'bold 14px Inter';
+          ctx.fillText(`${label} [ID #${det.id}]`, rx + 5, ry - 8);
+        });
       }
-    };
-    return () => ws.close();
-  }, []);
+
+      // 2. Draw Emotions
+      if (data.emotions) {
+        data.emotions.forEach(emo => {
+          const { x, y } = emo.region;
+          const rx = (x / 640) * width;
+          const ry = (y / 360) * height;
+          ctx.fillStyle = '#00e676';
+          ctx.font = 'bold 16px Inter';
+          ctx.fillText(`EMOTION: ${emo.emotion.toUpperCase()}`, rx, ry - 35);
+        });
+      }
+
+      // 3. Draw Auto Alert Overlay
+      if (data.auto_alert) {
+        ctx.fillStyle = 'rgba(255, 75, 92, 0.2)';
+        ctx.fillRect(0, 0, width, height);
+        ctx.strokeStyle = '#ff4b5c';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(0, 0, width, height);
+
+        ctx.fillStyle = '#ff4b5c';
+        ctx.font = 'bold 32px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText("CRITICAL ALERT: CALLING FOR HELP", width / 2, 80);
+        ctx.textAlign = 'left';
+      }
+    }
+  }, [threatData]);
 
   useEffect(() => {
     // 150ms interval for AI processing frame rate

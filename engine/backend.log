@@ -1,0 +1,59 @@
+WARNING:tensorflow:From C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\keras\src\losses.py:2976: The name tf.losses.sparse_softmax_cross_entropy is deprecated. Please use tf.compat.v1.losses.sparse_softmax_cross_entropy instead.
+
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+W0000 00:00:1772377897.004295   45444 inference_feedback_manager.cc:114] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1772377897.100223   51140 inference_feedback_manager.cc:114] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1772377897.128698   51140 inference_feedback_manager.cc:114] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+INFO:     Started server process [42204]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62822 - "WebSocket /ws/inference" [accepted]
+INFO:     connection open
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\uvicorn\protocols\websockets\websockets_impl.py", line 244, in run_asgi
+    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\fastapi\applications.py", line 1160, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\applications.py", line 107, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\middleware\errors.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\routing.py", line 716, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\routing.py", line 736, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\routing.py", line 364, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\fastapi\routing.py", line 148, in app
+    await wrap_app_handling_exceptions(app, session)(scope, receive, send)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\fastapi\routing.py", line 145, in app
+    await func(session)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\fastapi\routing.py", line 622, in app
+    await dependant.call(**solved_result.values)
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\main.py", line 87, in websocket_endpoint
+    await websocket.close()
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\websockets.py", line 181, in close
+    await self.send({"type": "websocket.close", "code": code, "reason": reason or ""})
+  File "C:\Users\Nilabh Kalia\SentinelEdge-AI\engine\venv\Lib\site-packages\starlette\websockets.py", line 98, in send
+    raise RuntimeError('Cannot call "send" once a close message has been sent.')
+RuntimeError: Cannot call "send" once a close message has been sent.
+INFO:     connection closed

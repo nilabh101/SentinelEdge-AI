@@ -56,7 +56,7 @@ function App() {
       </header>
 
       <main className="main-view">
-        <CameraFeed onFrame={handleFrame} />
+        <CameraFeed onFrame={handleFrame} threatData={threatData} />
         <div className="card" style={{ height: '120px' }}>
           <h3>Audio Activity (Waveform)</h3>
           <canvas id="audio-waveform" style={{ width: '100%', height: '60px', marginTop: '10px' }}></canvas>
