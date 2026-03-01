@@ -1,0 +1,19 @@
+# Python
+**/venv/
+**/__pycache__/
+*.pyc
+.env
+
+# Node
+**/node_modules/
+dashboard/dist/
+.eslintcache
+
+# Sensitive/Large AI Files
+*.pt
+*.onnx
+engine/models/
+
+# OS
+.DS_Store
+Thumbs.db
