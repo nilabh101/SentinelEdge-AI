@@ -24,11 +24,23 @@ class ThreatFusionEngine:
             score += w['audio']
             reasons.append("Sudden loud impulse sound detected")
         
-        # 3. Pose/Behavior (e.g., Aggressive gestures)
-        # Simplified: if pose visibility is high but movement is rapid (placeholder)
+        # 3. Pose/Behavior
         if len(pose_data) > 0:
-            # Placeholder for actual pose-based threat logic
+            # Placeholder for actual pose logic: Detect rapid motion or arm positions
             pass
+
+        # 4. Correlated Multimodal Fusion Logic
+        # Explicitly check for combined signals (e.g., Weapon + Loud Event)
+        has_weapon = any(d['className'] in ['knife', 'gun'] for d in detections)
+        has_loud_audio = "loud_event" in audio_signals
+        
+        if has_weapon and has_loud_audio:
+            score = 1.0 # Immediate max threat for weapon+gunshot/scream
+            reasons.append("CRITICAL: Combined Weapon + Audio Threat detected")
+        elif has_loud_audio and len(detections) > 0:
+             score += 0.2 # Slight boost if loud noise occurs near people
             
-        final_score = min(score, 1.0)
-        return round(final_score, 2), reasons
+        final_score = min(float(score), 1.0)
+        auto_alert = final_score > 0.75
+        final_score = int(final_score * 100) / 100
+        return final_score, reasons, auto_alert

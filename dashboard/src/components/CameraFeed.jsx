@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 
 const CameraFeed = ({ onFrame }) => {
   const videoRef = useRef(null);
@@ -7,39 +7,33 @@ const CameraFeed = ({ onFrame }) => {
   const analyserRef = useRef(null);
 
   useEffect(() => {
-    async function setupStream() {
+    const setupCamera = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720 },
-          audio: true
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (videoRef.current) videoRef.current.srcObject = stream;
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-
-        // Setup Audio Context for Waveform
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        analyserRef.current = audioContextRef.current.createAnalyser();
         const source = audioContextRef.current.createMediaStreamSource(stream);
-        source.connect(analyserRef.current);
+        analyserRef.current = audioContextRef.current.createAnalyser();
         analyserRef.current.fftSize = 256;
+        source.connect(analyserRef.current);
       } catch (err) {
-        console.error("Error accessing media devices.", err);
+        console.error("Camera error:", err);
       }
-    }
-    setupStream();
+    };
+    setupCamera();
   }, []);
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:8000/ws/inference');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (canvasRef.current) {
-        const ctx = document.getElementById('overlay-canvas').getContext('2d');
-        const { width, height } = canvasRef.current.parentElement.getBoundingClientRect();
-        document.getElementById('overlay-canvas').width = width;
-        document.getElementById('overlay-canvas').height = height;
+      const canvas = document.getElementById('overlay-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const { width, height } = canvas.parentElement.getBoundingClientRect();
+        canvas.width = width;
+        canvas.height = height;
         ctx.clearRect(0, 0, width, height);
 
         // 1. Draw Detections (HUD)
@@ -51,30 +45,47 @@ const CameraFeed = ({ onFrame }) => {
             const rw = ((x2 - x1) / 640) * width;
             const rh = ((y2 - y1) / 360) * height;
 
-            ctx.strokeStyle = det.className === 'person' ? '#00d2ff' : '#ff4b5c';
-            ctx.lineWidth = 2;
+            let color = det.className === 'person' ? '#00d2ff' : '#ff4b5c';
+            if (det.isHeld) color = '#ffeb3b';
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = det.isHeld ? 3 : 2;
             ctx.strokeRect(rx, ry, rw, rh);
 
-            // Label Background
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.fillRect(rx, ry - 25, ctx.measureText(det.className).width + 20, 25);
-            ctx.fillStyle = 'white';
+            ctx.fillStyle = color;
+            const label = det.isHeld ? `HELD: ${det.className.toUpperCase()}` : det.className.toUpperCase();
+            ctx.fillRect(rx, ry - 25, ctx.measureText(label).width + 20, 25);
+            ctx.fillStyle = 'black';
             ctx.font = 'bold 14px Inter';
-            ctx.fillText(`${det.className.toUpperCase()} [ID #${det.id}]`, rx + 5, ry - 8);
+            ctx.fillText(`${label} [ID #${det.id}]`, rx + 5, ry - 8);
           });
         }
 
         // 2. Draw Emotions
         if (data.emotions) {
           data.emotions.forEach(emo => {
-            const { x, y, w, h } = emo.region;
+            const { x, y } = emo.region;
             const rx = (x / 640) * width;
             const ry = (y / 360) * height;
-
             ctx.fillStyle = '#00e676';
             ctx.font = 'bold 16px Inter';
             ctx.fillText(`EMOTION: ${emo.emotion.toUpperCase()}`, rx, ry - 35);
           });
+        }
+
+        // 3. Draw Auto Alert Overlay
+        if (data.auto_alert) {
+          ctx.fillStyle = 'rgba(255, 75, 92, 0.2)';
+          ctx.fillRect(0, 0, width, height);
+          ctx.strokeStyle = '#ff4b5c';
+          ctx.lineWidth = 10;
+          ctx.strokeRect(0, 0, width, height);
+
+          ctx.fillStyle = '#ff4b5c';
+          ctx.font = 'bold 32px Inter';
+          ctx.textAlign = 'center';
+          ctx.fillText("CRITICAL ALERT: CALLING FOR HELP", width / 2, 80);
+          ctx.textAlign = 'left';
         }
       }
     };
@@ -82,35 +93,101 @@ const CameraFeed = ({ onFrame }) => {
   }, []);
 
   useEffect(() => {
+    // 150ms interval for AI processing frame rate
     const interval = setInterval(() => {
+      // 1. Draw video to the hidden canvas for processing
       if (videoRef.current && canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d');
-        ctx.drawImage(videoRef.current, 0, 0, 640, 360);
+        const vw = videoRef.current.videoWidth || 640;
+        const vh = videoRef.current.videoHeight || 360;
 
-        // Get Audio Data
+        // Ensure hidden canvas matches video dimensions
+        if (canvasRef.current.width !== vw) canvasRef.current.width = vw;
+        if (canvasRef.current.height !== vh) canvasRef.current.height = vh;
+
+        ctx.drawImage(videoRef.current, 0, 0, vw, vh);
+
+        // 2. Process Audio
         const dataArray = new Uint8Array(analyserRef.current ? analyserRef.current.frequencyBinCount : 0);
         if (analyserRef.current) analyserRef.current.getByteTimeDomainData(dataArray);
 
-        const frameBase64 = canvasRef.current.toDataURL('image/jpeg', 0.4); // Lower quality for speed
+        // Draw Audio Waveform
+        const waveCanvas = document.getElementById('audio-waveform');
+        if (waveCanvas) {
+          const wctx = waveCanvas.getContext('2d');
+          const ww = waveCanvas.width;
+          const wh = waveCanvas.height;
+          wctx.clearRect(0, 0, ww, wh);
+          wctx.strokeStyle = '#00e676';
+          wctx.lineWidth = 2;
+          wctx.beginPath();
+          const sliceWidth = ww * 1.0 / dataArray.length;
+          let x = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const v = dataArray[i] / 128.0;
+            const y = v * wh / 2;
+            if (i === 0) wctx.moveTo(x, y);
+            else wctx.lineTo(x, y);
+            x += sliceWidth;
+          }
+          wctx.stroke();
+        }
+
+        // 3. Send Frame to Backend
+        const frameBase64 = canvasRef.current.toDataURL('image/jpeg', 0.4);
         onFrame({ frame: frameBase64, audio: Array.from(dataArray) });
       }
-    }, 150); // ~7 FPS for stability with heavy AI
+
+      // 4. Force video stream to be visible in the UI container
+      // (The user couldn't see the feed because the video element was display:none,
+      // and the visible canvas wasn't drawing the video, only the overlay)
+    }, 150);
     return () => clearInterval(interval);
   }, [onFrame]);
 
   return (
-    <div className="camera-panel">
-      <div className="recording-indicator">
-        <span style={{ width: '10px', height: '10px', background: 'red', borderRadius: '50%' }}></span>
+    <div className="camera-panel" style={{ maxHeight: 'calc(100vh - 350px)', position: 'relative' }}>
+      <div className="recording-indicator" style={{ zIndex: 10, position: 'absolute', top: 20, left: 20 }}>
+        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent-red)' }}></div>
         LIVE SECURE FEED
       </div>
-      <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      <canvas ref={canvasRef} width="640" height="360" style={{ display: 'none' }} />
 
-      {/* Overlay Canvas for Bounding Boxes / Face Blur */}
-      <canvas id="overlay-canvas" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+      {/* Hidden canvas for extracting frames to send to AI */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          {/* Visible Live Video Feed */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              display: 'block'
+            }}
+          />
+
+          {/* AI HUD Overlay positioned exactly over the video container */}
+          <canvas
+            id="overlay-canvas"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              boxShadow: 'inset 0 0 50px rgba(0,0,0,0.5)'
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 export default CameraFeed;

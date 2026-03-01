@@ -3,7 +3,7 @@ import CameraFeed from './components/CameraFeed';
 import ThreatPanel from './components/ThreatPanel';
 
 function App() {
-  const [threatData, setThreatData] = useState({ score: 0.12, reasons: [] });
+  const [threatData, setThreatData] = useState({ score: 0.12, reasons: [], auto_alert: false });
   const [mode, setMode] = useState('Campus');
   const [socket, setSocket] = useState(null);
 
@@ -20,9 +20,29 @@ function App() {
 
   const handleFrame = useCallback((payload) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      // socket.send(JSON.stringify({ ...payload, mode }));
+      socket.send(JSON.stringify({ ...payload, mode }));
     }
   }, [socket, mode]);
+
+  const handleSimulateThreat = () => {
+    setThreatData({
+      score: 0.95,
+      reasons: ["CRITICAL: Combined Weapon + Audio Threat detected", "Aggressive Behavior"],
+      auto_alert: true,
+      detections: [
+        { id: 99, className: 'gun', isHeld: true, box: [250, 150, 350, 250] },
+        { id: 100, className: 'person', isHeld: false, box: [150, 50, 450, 350] }
+      ],
+      emotions: [
+        { emotion: 'angry', region: { x: 250, y: 100, w: 50, h: 50 } }
+      ]
+    });
+
+    // Return to normal after a few seconds
+    setTimeout(() => {
+      setThreatData({ score: 0.12, reasons: [], auto_alert: false, detections: [], emotions: [] });
+    }, 6000);
+  };
 
   return (
     <div className="dashboard-container">
@@ -44,6 +64,14 @@ function App() {
       </main>
 
       <aside>
+        <div style={{ marginBottom: '15px' }}>
+          <button
+            onClick={handleSimulateThreat}
+            style={{ width: '100%', padding: '12px', background: 'var(--accent-blue)', color: 'black', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+          >
+            SIMULATE THREAT ACTION
+          </button>
+        </div>
         <ThreatPanel
           score={threatData.score}
           reasons={threatData.reasons}

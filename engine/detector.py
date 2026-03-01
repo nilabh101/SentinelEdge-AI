@@ -10,23 +10,44 @@ class ThreatDetector:
         self.target_classes = None 
         
     def detect(self, frame):
-        # Detect all objects
-        results = self.model.track(frame, persist=True, verbose=False)
+        # Use predict instead of track for instant identification
+        results = self.model.predict(frame, verbose=False)
         detections = []
         
-        if results[0].boxes.id is not None:
-            boxes = results[0].boxes.xyxy.cpu().numpy().astype(int)
-            ids = results[0].boxes.id.cpu().numpy().astype(int)
-            cls = results[0].boxes.cls.cpu().numpy().astype(int)
-            conf = results[0].boxes.conf.cpu().numpy()
+        boxes = results[0].boxes
+        if len(boxes) > 0:
+            xyxys = boxes.xyxy.cpu().numpy().astype(int)
+            cls = boxes.cls.cpu().numpy().astype(int)
+            conf = boxes.conf.cpu().numpy()
+            ids = [0] * len(boxes) # Predict doesn't track IDs, fallback to 0
             
-            for box, id, c, cf in zip(boxes, ids, cls, conf):
-                detections.append({
-                    "id": int(id),
+            people = []
+            objects = []
+            
+            for box, obj_id, c, cf in zip(xyxys, ids, cls, conf):
+                det = {
+                    "id": int(obj_id),
                     "class": int(c),
                     "className": self.model.names[int(c)],
                     "confidence": float(cf),
-                    "box": box.tolist()
-                })
+                    "box": box.tolist(),
+                    "isHeld": False
+                }
+                if det['className'] == 'person':
+                    people.append(det)
+                else:
+                    objects.append(det)
+            
+            # Simple proximity check: Is object box inside or very close to person box?
+            for obj in objects:
+                ox1, oy1, ox2, oy2 = obj['box']
+                for p in people:
+                    px1, py1, px2, py2 = p['box']
+                    # Check for intersection or containment
+                    if not (ox2 < px1 or ox1 > px2 or oy2 < py1 or oy1 > py2):
+                        obj['isHeld'] = True
+                        break
+            
+            return people + objects
         
         return detections

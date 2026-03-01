@@ -47,7 +47,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     emotions = emotions_engine.analyze(frame)
                     
                     # 7. Fusion & Scoring
-                    score, reasons = fusion.calculate_score(detections, pose, audio_signals)
+                    score, reasons, auto_alert = fusion.calculate_score(detections, pose, audio_signals)
                     
                     # 8. Send processed data back
                     await websocket.send_json({
@@ -55,7 +55,8 @@ async def websocket_endpoint(websocket: WebSocket):
                         "reasons": reasons if reasons else ["Normal Activity"],
                         "detections": detections,
                         "pose": pose,
-                        "emotions": emotions
+                        "emotions": emotions,
+                        "auto_alert": auto_alert
                     })
             
     except Exception as e:
